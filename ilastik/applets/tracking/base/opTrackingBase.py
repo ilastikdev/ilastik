@@ -47,7 +47,9 @@ class OpTrackingBase(Operator, ExportingOperator):
 
     LabelImage = InputSlot()
     ObjectFeatures = InputSlot(stype=Opaque, rtype=List)
+    ObjectFeaturesWithDivFeatures = InputSlot(stype=Opaque, rtype=List)
     ComputedFeatureNames = InputSlot(rtype=List, stype=Opaque)
+    ComputedFeatureNamesWithDivFeatures = InputSlot(rtype=List, stype=Opaque)
     EventsVector = InputSlot(value={})
     FilteredLabels = InputSlot(value={})
     RawImage = InputSlot()
@@ -61,6 +63,18 @@ class OpTrackingBase(Operator, ExportingOperator):
     CachedOutput = OutputSlot()  # For the GUI (blockwise-access)
 
     Output = OutputSlot()
+
+    # Use a slot for storing the export settings in the project file.
+    ExportSettings = OutputSlot()
+    # Override functions ExportingOperator mixin
+    def configure_table_export_settings(self, settings, selected_features):
+        self.ExportSettings.setValue( (settings, selected_features) )
+    def get_table_export_settings(self):
+        if self.ExportSettings.ready():
+            (settings, selected_features) = self.ExportSettings.value
+            return (settings, selected_features)
+        else:
+            return None, None
 
     def __init__(self, parent=None, graph=None):
         super(OpTrackingBase, self).__init__(parent=parent, graph=graph)
@@ -560,7 +574,7 @@ class OpTrackingBase(Operator, ExportingOperator):
         """
         self.export_progress_dialog = dialog
 
-    def do_export(self, settings, selected_features, progress_slot):
+    def do_export(self, settings, selected_features, progress_slot, lane_index):
         """
         Implements ExportOperator.do_export(settings, selected_features, progress_slot
         Most likely called from ExportOperator.export_object_data
@@ -569,15 +583,18 @@ class OpTrackingBase(Operator, ExportingOperator):
         :param progress_slot:
         :return:
         """
+        assert lane_index == 0, "This has only been tested in tracking workflows with a single image."
+
         from ilastik.utility.exportFile import objects_per_frame, ExportFile, ilastik_ids, Mode, Default, \
             flatten_dict, division_flatten_dict
 
+        selected_features = list(selected_features)
+        with_divisions = self.Parameters.value["withDivisions"] if self.Parameters.ready() else False
         obj_count = list(objects_per_frame(self.LabelImage))
         track_ids, extra_track_ids, divisions = self.export_track_ids()
         self._setLabel2Color()
         lineage = flatten_dict(self.label2color, obj_count)
         multi_move_max = self.Parameters.value["maxObj"] if self.Parameters.ready() else 2
-        multi_move_max = max(2, multi_move_max)
         t_range = self.Parameters.value["time_range"] if self.Parameters.ready() else (0, 0)
         ids = ilastik_ids(obj_count)
 
@@ -591,21 +608,21 @@ class OpTrackingBase(Operator, ExportingOperator):
         export_file.add_columns("table", track_ids, Mode.IlastikTrackingTable,
                                 {"max": multi_move_max, "counts": obj_count, "extra ids": extra_track_ids,
                                  "range": t_range})
-        export_file.add_columns("table", self.ObjectFeatures, Mode.IlastikFeatureTable,
+        if with_divisions:
+            object_feature_slot = self.ObjectFeaturesWithDivFeatures
+        else:
+            object_feature_slot = self.ObjectFeatures
+        export_file.add_columns("table", object_feature_slot, Mode.IlastikFeatureTable,
                                 {"selection": selected_features})
 
-        if self.Parameters.value["withDivisions"] if self.Parameters.ready() else False:
-            try:
+        if with_divisions:
+            if divisions:
                 div_lineage = division_flatten_dict(divisions, self.label2color)
                 zips = zip(*divisions)
                 divisions = zip(zips[0], div_lineage, *zips[1:])
                 export_file.add_columns("divisions", divisions, Mode.List, Default.DivisionNames)
-            except Exception as e:
-                if hasattr(progress_slot, "safe_popup"):
-                    progress_slot.safe_popup_noclose("warning", "Warning", "Cannot export divisions.\nContinuing ...",
-                                                     e)
-                else:
-                    print "\nWarning, Cannot export divisions"
+            else:
+                logger.debug("No divisions occurred. Division Table will not be exported!")
 
         if settings["file type"] == "h5":
             export_file.add_rois(Default.LabelRoiPath, self.LabelImage, "table", settings["margin"], "labeling")

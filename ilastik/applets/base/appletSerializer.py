@@ -332,7 +332,9 @@ class SerialListSlot(SerialSlot):
         try:
             subgroup = group[self.name]
         except:
-            warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
+            if logger.isEnabledFor(logging.DEBUG):
+                # Only show this warning when debugging serialization
+                warnings.warn("Deserialization: Could not locate value for slot '{}'.  Skipping.".format( self.name ))
             return
         if 'isEmpty' in subgroup.attrs and subgroup.attrs['isEmpty']:
             self.inslot.setValue( self._iterable([]) )
@@ -602,6 +604,24 @@ class SerialClassifierSlot(SerialSlot):
         # retrained.)
         self.cache.forceValue( classifier )
 
+class SerialPickledValueSlot(SerialSlot):
+    """
+    For storing value slots whose data is a python object (not an array or a simple number).
+    """
+    def __init__(self, slot):
+        assert slot.level == 0, "SerialPickledValueSlot can only be used with level-0 slots."
+        super(SerialPickledValueSlot, self).__init__(slot)
+    
+    @staticmethod
+    def _saveValue(group, name, value):
+        group.create_dataset(name, data=pickle.dumps(value))
+
+    @staticmethod
+    def _getValue(subgroup, slot):
+        val = subgroup[()]
+        slot.setValue(pickle.loads(val))
+
+
 class SerialCountingSlot(SerialSlot):
     """For saving a random forest classifier."""
     def __init__(self, slot, cache, inslot=None, name=None,
@@ -614,13 +634,17 @@ class SerialCountingSlot(SerialSlot):
             self.name = slot.name
         if self.subname is None:
             self.subname = "wrapper{:04d}"
-        self._bind(cache.Output)
+
+        # We want to bind to the INPUT, not Output:
+        # - if the input becomes dirty, we want to make sure the cache is deleted
+        # - if the input becomes dirty and then the cache is reloaded, we'll save the classifier.
+        self._bind(cache.Input)
 
     def _serialize(self, group, name, slot):
         if self.cache._dirty:
             return
 
-        classifier_forests = self.cache._value
+        classifier_forests = self.cache.Output.value
 
         # Classifier can be None if there isn't any training data yet.
         if classifier_forests is None:

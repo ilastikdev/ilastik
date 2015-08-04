@@ -147,7 +147,7 @@ class ObjectClassificationWorkflow(Workflow):
         self._applets.append(self.objectExtractionApplet)
         self._applets.append(self.objectClassificationApplet)
         self._applets.append(self.dataExportApplet)
-            self.opDataSelectionBatch.DatasetRoles.setValue(role_names)
+        self.opDataSelectionBatch.DatasetRoles.setValue(role_names)
 
         self._applets.append(self.blockwiseObjectClassificationApplet)
 

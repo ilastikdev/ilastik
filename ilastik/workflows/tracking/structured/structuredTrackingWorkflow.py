@@ -80,6 +80,8 @@ class StructuredTrackingWorkflow( Workflow ):
         opAnnotations = self.annotationsApplet.topLevelOperator
 
         self.dataExportAnnotationsApplet = TrackingBaseDataExportApplet(self, "Training Export")
+        self.dataExportAnnotationsApplet.set_exporting_operator(opAnnotations)
+
         opDataExportAnnotations = self.dataExportAnnotationsApplet.topLevelOperator
         opDataExportAnnotations.SelectionNames.setValue( ['Training', 'Object Identities'] )
         opDataExportAnnotations.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
@@ -88,7 +90,10 @@ class StructuredTrackingWorkflow( Workflow ):
         opStructuredTracking = self.trackingApplet.topLevelOperator
 
         self.dataExportTrackingApplet = TrackingBaseDataExportApplet(self, "Tracking Result Export")
+        self.dataExportTrackingApplet.set_exporting_operator(opStructuredTracking)
         opDataExportTracking = self.dataExportTrackingApplet.topLevelOperator
+
+
         opDataExportTracking.SelectionNames.setValue( ['Tracking Result', 'Merger Result', 'Object Identities'] )
         opDataExportTracking.WorkingDirectory.connect( opDataSelection.WorkingDirectory )
 
@@ -259,7 +264,7 @@ class StructuredTrackingWorkflow( Workflow ):
         objectCountClassifier_ready = tracking_features_ready
 
         opObjectExtraction = self.objectExtractionApplet.topLevelOperator
-        objectExtractionOutput = opObjectExtraction.ComputedFeatureNames
+        objectExtractionOutput = opObjectExtraction.RegionFeatures
         features_ready = thresholding_ready and \
                          len(objectExtractionOutput) > 0
 

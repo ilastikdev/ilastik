@@ -36,7 +36,7 @@ class TrackingBaseDataExportApplet( DataExportApplet ):
         if self._gui is None:
             # Gui is a special subclass of the generic gui
             from trackingBaseDataExportGui import TrackingBaseDataExportGui
-            self._gui = TrackingBaseDataExportGui( self, self.topLevelOperator )
+            self._gui = TrackingBaseDataExportGui(self, self.topLevelOperator )
 
             assert self.export_op is not None, "Exporting Operator must be set!"
             self._gui.set_exporting_operator(self.export_op)

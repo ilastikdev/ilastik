@@ -1,0 +1,54 @@
+*~
+build
+tests/*.h5
+*.pyc
+*.goutputstream
+*.pyo
+*.kdev4
+.DS_Store
+
+*/*.pyc
+*.*~
+tests/*.png
+tests/images
+.project
+*.h5
+.pydevproject
+
+build/
+dist/
+ilastik.egg-info/
+
+.settings
+
+test.svg
+geany_run_script.bat
+
+*.lp
+*.log
+*.orig
+ilastik/applets/counting/cwrapper/gurobi
+ilastik/applets/counting/cwrapper/cplex
+CMakeFiles
+CMakeCache*
+*.cmake
+ilastik/applets/counting/cwrapper/Makefile
+
+# PyCharm project folder
+.idea
+
+# Vim swap files
+*.s[a-w][a-z]
+*.un~
+.netrwhist
+
+# Ctags file
+tags
+# cscope output
+cscope.out
+
+# qt designer autosave
+*.autosave
+
+tests/recorded_test_cases/ObjectClassification/cube_objects_binary.npy
+tests/recorded_test_cases/ObjectClassification/cube_objects_raw.npy
